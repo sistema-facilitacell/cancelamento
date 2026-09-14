@@ -96,6 +96,9 @@ a.link{color:var(--gold);text-decoration:none;}
 .qr-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:10px;}
 .qr-wrap canvas,.qr-wrap img{border-radius:6px;}
 .qr-caption{font-size:11.5px;color:var(--gray);text-align:center;}
+.modal-overlay{position:fixed;inset:0;background:rgba(15,26,43,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+.modal-box{background:#fff;border-radius:12px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:22px;position:relative;}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;color:var(--gray);cursor:pointer;}
 </style>
 </head>
 <body>
@@ -323,12 +326,23 @@ a.link{color:var(--gold);text-decoration:none;}
         <div id="signStepDone" class="hidden center">
           <div style="font-size:44px;margin-bottom:10px;">✅</div>
           <h2 style="color:var(--gold);margin-bottom:8px;">Assinatura concluída!</h2>
-          <p class="muted">O termo de cancelamento foi assinado com sucesso. Você pode fechar esta página.</p>
+          <p class="muted">O termo de cancelamento foi assinado com sucesso.</p>
           <div class="grid2" style="margin-top:16px;text-align:left;">
             <div><label>Data e hora da assinatura</label><p id="signDataHora">-</p></div>
             <div><label>Localização (Latitude, Longitude)</label><p id="signGeoCoords">-</p></div>
           </div>
           <div class="hash-box" style="margin-top:16px;" id="signHashDisplay"></div>
+          <button class="btn btn-gold" id="btnPdfSignDone" style="margin-top:18px;width:100%;">Baixar termo em PDF</button>
+          <div id="pixWrapSignDone" class="hidden" style="margin-top:22px;text-align:left;padding-top:18px;border-top:1px solid var(--border);">
+            <div class="section-title" style="margin-bottom:10px;">Pagamento da taxa de cancelamento via PIX</div>
+            <div class="qr-wrap" style="margin-bottom:12px;">
+              <div id="qrcodePixSignDone"></div>
+              <span class="qr-caption" id="pixValorSignDone"></span>
+            </div>
+            <label>Código Copia e Cola</label>
+            <div class="hash-box" id="pixCopiaColaSignDone" style="margin-bottom:10px;"></div>
+            <button class="btn btn-outline btn-sm" id="btnCopiarPixSignDone" style="width:100%;">Copiar código PIX</button>
+          </div>
         </div>
       </div>
       <div id="signError" class="hidden center" style="padding:30px 0;">
@@ -337,6 +351,33 @@ a.link{color:var(--gold);text-decoration:none;}
     </div>
   </div>
 
+</div>
+<div id="modalReenvio" class="modal-overlay hidden">
+  <div class="modal-box">
+    <button class="modal-close" id="btnFecharModalReenvio">✕</button>
+    <div class="section-title" id="modalReenvioTitulo" style="margin-bottom:14px;">Enviar para assinatura</div>
+    <div class="qr-wrap" style="margin-bottom:14px;">
+      <div id="qrcodeModalReenvio"></div>
+      <span class="qr-caption">Escaneie para assinar</span>
+    </div>
+    <div class="hash-box" id="linkModalReenvio" style="margin-bottom:12px;"></div>
+    <div class="grid3" style="margin-bottom:6px;">
+      <a class="btn btn-gold" id="btnWhatsappModalReenvio" target="_blank" style="text-align:center;text-decoration:none;">WhatsApp</a>
+      <button class="btn btn-outline" id="btnCopiarLinkModalReenvio">Copiar link</button>
+      <button class="btn btn-outline" id="btnPdfModalReenvio">Baixar PDF</button>
+    </div>
+    <div id="pixModalReenvio" class="hidden" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div class="section-title" style="margin-bottom:10px;">Pagamento da taxa via PIX</div>
+      <div class="grid2" style="align-items:start;">
+        <div class="qr-wrap"><div id="qrcodePixModalReenvio"></div><span class="qr-caption" id="pixValorModalReenvio"></span></div>
+        <div>
+          <label>Código Copia e Cola</label>
+          <div class="hash-box" id="pixCopiaColaModalReenvio" style="margin-bottom:10px;"></div>
+          <button class="btn btn-outline btn-sm" id="btnCopiarPixModalReenvio">Copiar código PIX</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 <div id="qrPdfHidden" style="position:absolute;left:-9999px;top:-9999px;"></div>
 
@@ -394,7 +435,7 @@ function gerarQRDataURL(texto, tamanho){
 }
 
 /* ===================== PIX (BR Code / Copia e Cola) ===================== */
-const PIX_CONFIG = { chave: "67160084000100", nome: "WEVELLEN ERRERA", cidade: "SAO PAULO" };
+const PIX_CONFIG = { chave: "67160084000100", nome: "FACILITA CELL", cidade: "SAO PAULO" };
 
 function semAcentos(txt){
   return (txt||"").normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
@@ -547,6 +588,7 @@ function renderLista(){
       <td><span class="pill pill-${c.status}">${statusLabel(c.status)}</span></td>
       <td class="row-actions">
         <button class="btn btn-outline btn-sm" onclick="abrirDetalhe('${c.id}')">Ver</button>
+        ${c.token ? `<button class="btn btn-gold btn-sm" onclick="abrirModalReenvio('${c.id}')" title="Link/QR para assinatura e pagamento">Enviar</button>` : ''}
       </td>`;
     body.appendChild(tr);
   });
@@ -616,7 +658,15 @@ document.getElementById('btnBaixarTermoEtapa2').addEventListener('click', ()=>{
   gerarPDF(cancelamentoAtual);
 });
 
+let gerandoLink = false;
 document.getElementById('btnGerarLink').addEventListener('click', async ()=>{
+  if(gerandoLink) return; // trava contra clique duplo/repetido que causava registros duplicados
+  gerandoLink = true;
+  const btnGerar = document.getElementById('btnGerarLink');
+  const textoOriginalBtn = btnGerar.textContent;
+  btnGerar.disabled = true;
+  btnGerar.textContent = "Gerando...";
+
   const token = uid();
   let numero;
   try{
@@ -624,6 +674,7 @@ document.getElementById('btnGerarLink').addEventListener('click', async ()=>{
   }catch(e){
     console.error(e);
     toast("Erro ao gerar numeração do termo. Verifique a conexão com o Firebase.");
+    gerandoLink = false; btnGerar.disabled = false; btnGerar.textContent = textoOriginalBtn;
     return;
   }
   cancelamentoAtual.numero = numero;
@@ -673,6 +724,10 @@ document.getElementById('btnGerarLink').addEventListener('click', async ()=>{
   }catch(e){
     console.error(e);
     toast("Erro ao salvar cancelamento. Verifique a conexão com o Firebase.");
+  }finally{
+    gerandoLink = false;
+    btnGerar.disabled = false;
+    btnGerar.textContent = textoOriginalBtn;
   }
 });
 
@@ -690,7 +745,10 @@ window.abrirDetalhe = function(id){
   let html = `
     <div class="grid2">
       <div><span class="badge-fin ${badgeClass}">${c.financeira}</span> &nbsp; <span class="pill pill-${c.status}">${statusLabel(c.status)}</span></div>
-      <div class="center"><button class="btn btn-gold btn-sm" onclick="baixarPDF('${c.id}')">Baixar PDF</button></div>
+      <div class="center row-actions" style="justify-content:flex-end;">
+        <button class="btn btn-gold btn-sm" onclick="baixarPDF('${c.id}')">Baixar PDF</button>
+        ${c.status !== 'cancelado' ? `<button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red);" onclick="cancelarRegistro('${c.id}')">Cancelar registro</button>` : ''}
+      </div>
     </div>
     <div class="termo-box" style="margin:16px 0;">${c.termoTexto || gerarTermoTexto(c)}</div>
     <div class="grid3">
@@ -766,6 +824,69 @@ window.baixarPDF = function(id){
   const c = cancelamentos.find(x=>x.id===id);
   gerarPDF(c);
 };
+
+window.cancelarRegistro = async function(id){
+  const c = cancelamentos.find(x=>x.id===id);
+  if(!c) return;
+  const ok = confirm(`Cancelar este registro de ${c.clienteNome}?\n\nUse isso para remover duplicados ou erros de cadastro. O registro fica marcado como "Cancelado" (filtrável na lista), mas não é apagado do banco.`);
+  if(!ok) return;
+  try{
+    await db.collection(COL).doc(id).update({ status: "cancelado" });
+    toast("Registro cancelado.");
+    showView('staffView');
+  }catch(e){
+    console.error(e);
+    toast("Erro ao cancelar registro. Verifique a conexão com o Firebase.");
+  }
+};
+
+/* ===================== MODAL DE REENVIO RÁPIDO ===================== */
+window.abrirModalReenvio = function(id){
+  const c = cancelamentos.find(x=>x.id===id);
+  if(!c || !c.token) return;
+  const link = `${location.origin}${location.pathname}?token=${c.token}`;
+
+  document.getElementById('modalReenvioTitulo').textContent = `Enviar para ${c.clienteNome||'cliente'}`;
+  document.getElementById('linkModalReenvio').textContent = link;
+
+  const qrEl = document.getElementById('qrcodeModalReenvio');
+  qrEl.innerHTML = "";
+  new QRCode(qrEl, { text: link, width: 170, height: 170, colorDark: "#0F1A2B", colorLight: "#ffffff" });
+
+  const msg = encodeURIComponent(`Olá ${c.clienteNome}! Segue o link para assinatura digital do termo de cancelamento nº ${c.numero||''} do seu financiamento (${c.financeira}): ${link}`);
+  const tel = (c.clienteTel||'').replace(/\D/g,'');
+  document.getElementById('btnWhatsappModalReenvio').href = `https://wa.me/55${tel}?text=${msg}`;
+  document.getElementById('btnCopiarLinkModalReenvio').onclick = ()=>{
+    navigator.clipboard.writeText(link);
+    toast("Link copiado!");
+  };
+  document.getElementById('btnPdfModalReenvio').onclick = ()=> gerarPDF(c);
+
+  if(Number(c.taxaCancelamento) > 0){
+    const payloadPix = montarPayloadPix({ valor: c.taxaCancelamento, txid: c.id });
+    document.getElementById('pixCopiaColaModalReenvio').textContent = payloadPix;
+    document.getElementById('pixValorModalReenvio').textContent = `Taxa: ${fmtMoney(c.taxaCancelamento)}`;
+    const qrPixEl = document.getElementById('qrcodePixModalReenvio');
+    qrPixEl.innerHTML = "";
+    new QRCode(qrPixEl, { text: payloadPix, width: 150, height: 150, colorDark: "#0F1A2B", colorLight: "#ffffff" });
+    document.getElementById('btnCopiarPixModalReenvio').onclick = ()=>{
+      navigator.clipboard.writeText(payloadPix);
+      toast("Código PIX copiado!");
+    };
+    document.getElementById('pixModalReenvio').classList.remove('hidden');
+  } else {
+    document.getElementById('pixModalReenvio').classList.add('hidden');
+  }
+
+  document.getElementById('modalReenvio').classList.remove('hidden');
+};
+function fecharModalReenvio(){
+  document.getElementById('modalReenvio').classList.add('hidden');
+}
+document.getElementById('btnFecharModalReenvio').addEventListener('click', fecharModalReenvio);
+document.getElementById('modalReenvio').addEventListener('click', (e)=>{
+  if(e.target.id === 'modalReenvio') fecharModalReenvio();
+});
 
 /* ===================== PDF GENERATION ===================== */
 function gerarPDF(c){
@@ -967,8 +1088,30 @@ function gerarPDF(c){
 let sigCtx, sigDrawing=false, sigHasStroke=false;
 let selfieStream=null, selfieDataUrl=null;
 
+function mostrarPosAssinatura(c){
+  const btnPdf = document.getElementById('btnPdfSignDone');
+  if(btnPdf){ btnPdf.onclick = ()=> gerarPDF(c); }
+
+  if(Number(c.taxaCancelamento) > 0){
+    const payloadPix = montarPayloadPix({ valor: c.taxaCancelamento, txid: c.id || c.token });
+    document.getElementById('pixCopiaColaSignDone').textContent = payloadPix;
+    document.getElementById('pixValorSignDone').textContent = `Taxa: ${fmtMoney(c.taxaCancelamento)}`;
+    const qrPixEl = document.getElementById('qrcodePixSignDone');
+    qrPixEl.innerHTML = "";
+    new QRCode(qrPixEl, { text: payloadPix, width: 170, height: 170, colorDark: "#0F1A2B", colorLight: "#ffffff" });
+    document.getElementById('btnCopiarPixSignDone').onclick = ()=>{
+      navigator.clipboard.writeText(payloadPix);
+      toast("Código PIX copiado!");
+    };
+    document.getElementById('pixWrapSignDone').classList.remove('hidden');
+  }else{
+    document.getElementById('pixWrapSignDone').classList.add('hidden');
+  }
+}
+
 async function iniciarAssinaturaPorToken(token){
   showView('signView');
+  window._signToken = token;
   const snap = await db.collection(COL).where("token","==",token).limit(1).get();
   if(snap.empty){
     document.getElementById('signLoading').classList.add('hidden');
@@ -985,6 +1128,7 @@ async function iniciarAssinaturaPorToken(token){
     document.getElementById('signHashDisplay').textContent = "Hash: " + (data.hash||'-');
     document.getElementById('signDataHora').textContent = data.assinadoEm ? new Date(data.assinadoEm).toLocaleString('pt-BR') : "-";
     document.getElementById('signGeoCoords').textContent = data.geo ? `${data.geo.lat}, ${data.geo.lng}` : "Não disponível";
+    mostrarPosAssinatura({ ...data, id: docRef.id, token });
     return;
   }
   window._signDocId = docRef.id;
@@ -1093,6 +1237,12 @@ document.getElementById('btnFinalizarAssinatura').addEventListener('click', asyn
     document.getElementById('signHashDisplay').textContent = "Hash: " + hash;
     document.getElementById('signDataHora').textContent = new Date(assinadoEm).toLocaleString('pt-BR');
     document.getElementById('signGeoCoords').textContent = geo ? `${geo.lat}, ${geo.lng}` : "Não disponível";
+    mostrarPosAssinatura({
+      ...window._signData,
+      id: window._signDocId,
+      token: window._signToken,
+      assinaturaImg, selfieImg: selfieDataUrl, geo, assinadoEm, hash
+    });
   }catch(e){
     console.error(e);
     toast("Erro ao salvar assinatura. Tente novamente.");

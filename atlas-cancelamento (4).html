@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Atlas Cancelamento | PayJoy & Odres Cred</title>
+<meta name="theme-color" content="#0B1E35">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230B1E35%22/><text x=%2250%22 y=%2265%22 font-size=%2255%22 fill=%22%23C9A84C%22 text-anchor=%22middle%22 font-family=%22Arial%22>A</text></svg>">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --navy:#0F1A2B;
+  --gold:#A9822E;
+  --gold-light:#C9A84C;
+  --gold-bg:#F6EFDD;
+  --bg:#FFFFFF;
+  --bg-soft:#F7F8FA;
+  --border:#E3E6EC;
+  --border-strong:#D3D8E0;
+  --white:#0F1A2B;
+  --gray:#6B7280;
+  --red:#B3423A;
+  --red-bg:#FBEAE8;
+  --green:#2E7D5B;
+  --green-bg:#E9F5EF;
+  --blue:#2C6FA6;
+  --blue-bg:#EAF3FA;
+  --radius:10px;
+  --shadow:0 2px 10px rgba(15,26,43,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;}
+body{background:var(--bg-soft);color:var(--navy);min-height:100vh;}
+#app{max-width:1100px;margin:0 auto;padding:16px;}
+.hidden{display:none !important;}
+header.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 20px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+header.topbar .brand{display:flex;align-items:center;gap:10px;}
+header.topbar .brand .logo{width:34px;height:34px;border-radius:8px;background:var(--navy);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;}
+header.topbar h1{font-size:17px;font-weight:600;letter-spacing:.2px;color:var(--navy);}
+header.topbar h1 span{color:var(--gold);}
+.btn{border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;}
+.btn-gold{background:var(--navy);color:#fff;}
+.btn-gold:hover{background:#1C3049;}
+.btn-outline{background:#fff;border:1px solid var(--border-strong);color:var(--navy);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 10px;font-size:12px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+@media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr;}}
+label{display:block;font-size:12.5px;color:var(--gray);margin-bottom:5px;font-weight:600;}
+input,select,textarea{width:100%;background:var(--bg-soft);border:1px solid var(--border-strong);color:var(--navy);border-radius:7px;padding:9px 11px;font-size:14px;margin-bottom:12px;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);background:#fff;}
+input[readonly]{background:#EEF0F3;color:#4B5563;cursor:not-allowed;}
+textarea{resize:vertical;min-height:70px;}
+.field{margin-bottom:2px;}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;letter-spacing:.3px;}
+.pill-rascunho{background:#EEF0F3;color:#5B6470;}
+.pill-aguardando{background:var(--gold-bg);color:#8A6A1E;}
+.pill-assinado{background:var(--green-bg);color:var(--green);}
+.pill-concluido{background:var(--blue-bg);color:var(--blue);}
+.pill-cancelado{background:var(--red-bg);color:var(--red);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{text-align:left;color:var(--gray);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--border);}
+td{padding:10px;border-bottom:1px solid var(--border);}
+tr:hover td{background:var(--bg-soft);}
+.row-actions{display:flex;gap:6px;}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;justify-content:space-between;}
+.toolbar-filters{display:flex;gap:10px;flex-wrap:wrap;}
+.toolbar-filters select,.toolbar-filters input{margin:0;width:auto;min-width:150px;}
+.section-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;letter-spacing:.2px;border-left:3px solid var(--gold);padding-left:10px;}
+.stepper{display:flex;gap:6px;margin-bottom:20px;}
+.step{flex:1;height:4px;border-radius:3px;background:var(--border-strong);}
+.step.active{background:var(--gold);}
+canvas#sigCanvas{background:#fff;border:1px solid var(--border-strong);border-radius:8px;width:100%;touch-action:none;cursor:crosshair;}
+.center{text-align:center;}
+.muted{color:var(--gray);font-size:13px;}
+.termo-box{background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:13px;line-height:1.65;max-height:280px;overflow-y:auto;color:#333B47;}
+.termo-box b{color:var(--navy);}
+.selfie-preview{width:120px;height:120px;border-radius:10px;object-fit:cover;border:2px solid var(--gold);}
+.spinner{border:3px solid var(--border-strong);border-top:3px solid var(--gold);border-radius:50%;width:26px;height:26px;animation:spin 1s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);border:1px solid var(--gold);color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;z-index:999;box-shadow:0 4px 18px rgba(0,0,0,.2);}
+.empty-state{text-align:center;padding:50px 20px;color:var(--gray);}
+.badge-fin{padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;}
+.badge-payjoy{background:#F0EAFB;color:#6B46B5;}
+.badge-odres{background:var(--blue-bg);color:var(--blue);}
+a.link{color:var(--gold);text-decoration:none;}
+.hash-box{font-family:monospace;font-size:11px;color:var(--gray);word-break:break-all;background:var(--bg-soft);border:1px solid var(--border);padding:8px;border-radius:6px;}
+.close-signing{position:fixed;top:14px;right:14px;}
+.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:10px;}
+.qr-wrap canvas,.qr-wrap img{border-radius:6px;}
+.qr-caption{font-size:11.5px;color:var(--gray);text-align:center;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= STAFF VIEW ================= -->
+  <div id="staffView">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">A</div>
+        <h1>Atlas <span>Cancelamento</span></h1>
+      </div>
+      <button class="btn btn-gold" id="btnNovo">+ Novo cancelamento</button>
+    </header>
+
+    <div class="card" id="dashCard">
+      <div class="toolbar">
+        <div class="toolbar-filters">
+          <select id="filtroFinanceira">
+            <option value="">Todas as financeiras</option>
+            <option value="PayJoy">PayJoy</option>
+            <option value="Odres Cred">Odres Cred</option>
+          </select>
+          <select id="filtroStatus">
+            <option value="">Todos os status</option>
+            <option value="rascunho">Rascunho</option>
+            <option value="aguardando">Aguardando assinatura</option>
+            <option value="assinado">Assinado</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <input type="text" id="filtroBusca" placeholder="Buscar cliente, CPF ou IMEI...">
+        </div>
+        <span class="muted" id="contagem"></span>
+      </div>
+      <div id="listaWrap">
+        <table>
+          <thead>
+            <tr><th>Cliente</th><th>Financeira</th><th>Aparelho</th><th>Motivo</th><th>Data</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="listaBody"></tbody>
+        </table>
+        <div class="empty-state hidden" id="emptyState">Nenhum cancelamento encontrado.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= FORM VIEW (novo cancelamento) ================= -->
+  <div id="formView" class="hidden">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">A</div>
+        <h1>Novo <span>Cancelamento</span></h1>
+      </div>
+      <button class="btn btn-outline" id="btnVoltarForm">← Voltar</button>
+    </header>
+
+    <div class="stepper">
+      <div class="step active" data-step="1"></div>
+      <div class="step" data-step="2"></div>
+      <div class="step" data-step="3"></div>
+    </div>
+
+    <!-- Etapa 1: dados -->
+    <div class="card" id="etapa1">
+      <div class="section-title">1. Dados do contrato e cliente</div>
+      <div class="grid3">
+        <div class="field"><label>Financeira *</label>
+          <select id="fFinanceira">
+            <option value="">Selecione</option>
+            <option value="PayJoy">PayJoy</option>
+            <option value="Odres Cred">Odres Cred</option>
+          </select>
+        </div>
+        <div class="field"><label>Loja *</label><input id="fLoja" value="ZOOMTECH FOZ" readonly></div>
+        <div class="field"><label>Atendente *</label><input id="fAtendente" value="WEVELLEN" readonly></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Nome do cliente *</label><input id="fClienteNome"></div>
+        <div class="field"><label>CPF *</label><input id="fClienteCPF" placeholder="000.000.000-00"></div>
+        <div class="field"><label>Telefone (WhatsApp) *</label><input id="fClienteTel" placeholder="(45) 90000-0000"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Modelo do aparelho *</label><input id="fAparelho" placeholder="Ex: Samsung Galaxy A54"></div>
+        <div class="field"><label>IMEI *</label><input id="fImei"></div>
+        <div class="field"><label>Nº do contrato</label><input id="fContrato"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Valor financiado (R$)</label><input id="fValorFinanciado" type="number" step="0.01"></div>
+        <div class="field"><label>Valor já pago (R$)</label><input id="fValorPago" type="number" step="0.01"></div>
+        <div class="field"><label>Data da contratação</label><input id="fDataContrato" type="date"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Motivo do cancelamento *</label>
+          <select id="fMotivo">
+            <option value="">Selecione</option>
+            <option>Desistência do cliente</option>
+            <option>Troca de aparelho</option>
+            <option>Defeito de fábrica</option>
+            <option>Inadimplência</option>
+            <option>Erro na contratação</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div class="field"><label>Taxa de cancelamento cobrada pela financeira (R$)</label><input id="fTaxaCancelamento" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="field"><label>Data do cancelamento</label><input id="fDataCancelamento" type="date"></div>
+      </div>
+      <div class="field"><label>Observações</label><textarea id="fObs" placeholder="Detalhes adicionais sobre o cancelamento..."></textarea></div>
+      <div class="center" style="margin-top:10px;">
+        <button class="btn btn-gold" id="btnIrEtapa2">Gerar termo e continuar →</button>
+      </div>
+    </div>
+
+    <!-- Etapa 2: revisão do termo + envio -->
+    <div class="card hidden" id="etapa2">
+      <div class="section-title">2. Termo de Cancelamento e Distrato</div>
+      <div class="termo-box" id="termoPreview"></div>
+      <div class="grid3">
+        <button class="btn btn-outline" id="btnVoltarEtapa1">← Corrigir dados</button>
+        <button class="btn btn-outline" id="btnBaixarTermoEtapa2">Baixar termo em PDF</button>
+        <button class="btn btn-gold" id="btnGerarLink">Gerar link de assinatura →</button>
+      </div>
+    </div>
+
+    <!-- Etapa 3: link gerado -->
+    <div class="card hidden" id="etapa3">
+      <div class="section-title">3. Assinatura do cliente</div>
+      <p class="muted" style="margin-bottom:14px;">Envie o link abaixo para o cliente assinar remotamente (assinatura, selfie e localização são capturadas automaticamente).</p>
+      <div class="grid2" style="align-items:start;">
+        <div>
+          <div class="hash-box" id="linkGerado" style="margin-bottom:14px;font-size:13px;"></div>
+          <div class="grid3">
+            <a class="btn btn-gold" id="btnWhatsapp" target="_blank" style="text-align:center;text-decoration:none;">Enviar por WhatsApp</a>
+            <button class="btn btn-outline" id="btnCopiarLink">Copiar link</button>
+            <button class="btn btn-outline" id="btnBaixarTermoEtapa3">Baixar termo em PDF</button>
+          </div>
+        </div>
+        <div class="qr-wrap">
+          <div id="qrcodeEtapa3"></div>
+          <span class="qr-caption">Escaneie para assinar no celular do cliente</span>
+        </div>
+      </div>
+      <div class="center" style="margin-top:18px;">
+        <button class="btn btn-outline" id="btnFinalizarNovo">Concluir e voltar ao painel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL VIEW ================= -->
+  <div id="detailView" class="hidden">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">A</div>
+        <h1>Detalhe do <span>Cancelamento</span></h1>
+      </div>
+      <button class="btn btn-outline" id="btnVoltarDetail">← Voltar</button>
+    </header>
+    <div class="card" id="detailContent"></div>
+  </div>
+
+  <!-- ================= CLIENT SIGNING VIEW ================= -->
+  <div id="signView" class="hidden">
+    <div class="card" style="max-width:520px;margin:30px auto;">
+      <div class="section-title center" style="text-align:center;">Assinatura Digital — Cancelamento</div>
+      <div id="signLoading" class="center" style="padding:40px 0;">
+        <div class="spinner"></div>
+        <p class="muted" style="margin-top:12px;">Carregando termo...</p>
+      </div>
+      <div id="signContent" class="hidden">
+        <div class="termo-box" id="signTermoBox" style="margin-bottom:16px;"></div>
+
+        <div id="signStepSig">
+          <label>Assine no campo abaixo com o dedo ou mouse</label>
+          <canvas id="sigCanvas" height="160"></canvas>
+          <div class="grid2" style="margin-top:10px;">
+            <button class="btn btn-outline btn-sm" id="btnLimparAssinatura">Limpar assinatura</button>
+            <button class="btn btn-gold btn-sm" id="btnConfirmarAssinatura">Confirmar assinatura →</button>
+          </div>
+        </div>
+
+        <div id="signStepSelfie" class="hidden">
+          <p class="muted" style="margin-bottom:10px;">Agora, tire uma selfie para confirmar sua identidade.</p>
+          <video id="selfieVideo" autoplay playsinline style="width:100%;border-radius:8px;display:block;"></video>
+          <canvas id="selfieCanvas" class="hidden"></canvas>
+          <div class="grid2" style="margin-top:10px;">
+            <button class="btn btn-outline btn-sm" id="btnAbrirCamera">Ativar câmera</button>
+            <button class="btn btn-gold btn-sm" id="btnTirarSelfie">Tirar foto</button>
+          </div>
+          <div class="center hidden" id="selfiePreviewWrap" style="margin-top:12px;">
+            <img id="selfiePreviewImg" class="selfie-preview">
+            <div style="margin-top:12px;">
+              <button class="btn btn-gold" id="btnFinalizarAssinatura">Concluir assinatura</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="signStepDone" class="hidden center">
+          <div style="font-size:44px;margin-bottom:10px;">✅</div>
+          <h2 style="color:var(--gold);margin-bottom:8px;">Assinatura concluída!</h2>
+          <p class="muted">O termo de cancelamento foi assinado com sucesso. Você pode fechar esta página.</p>
+          <div class="hash-box" style="margin-top:16px;" id="signHashDisplay"></div>
+        </div>
+      </div>
+      <div id="signError" class="hidden center" style="padding:30px 0;">
+        <p class="muted">Link inválido, expirado ou já utilizado.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div id="qrPdfHidden" style="position:absolute;left:-9999px;top:-9999px;"></div>
+
+<script>
+/* ===================== FIREBASE CONFIG ===================== */
+// Substitua pelos dados do seu projeto Firebase (mesmo projeto usado nos demais sistemas Atlas)
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COL = "cancelamentos_financeira";
+
+/* ===================== HELPERS ===================== */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function fmtDate(d){ if(!d) return "-"; const dt = (d.seconds)? new Date(d.seconds*1000): new Date(d); return dt.toLocaleDateString('pt-BR'); }
+function fmtMoney(v){ if(v===undefined||v===null||v==="") return "-"; return "R$ " + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2}); }
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),3200);
+}
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function obterProximoNumero(){
+  const ref = db.collection('contadores').doc('cancelamentos_financeira');
+  return db.runTransaction(async (t)=>{
+    const snap = await t.get(ref);
+    let atual = snap.exists ? (snap.data().atual || 0) : 0;
+    atual += 1;
+    t.set(ref, { atual }, { merge:true });
+    const ano = new Date().getFullYear();
+    return String(atual).padStart(4,'0') + "/" + ano;
+  });
+}
+function gerarQRDataURL(texto, tamanho){
+  const holder = document.getElementById('qrPdfHidden');
+  holder.innerHTML = "";
+  new QRCode(holder, { text: texto, width: tamanho||220, height: tamanho||220, colorDark:"#0F1A2B", colorLight:"#ffffff", correctLevel: QRCode.CorrectLevel.M });
+  const canvas = holder.querySelector('canvas');
+  return canvas ? canvas.toDataURL('image/png') : null;
+}
+function showView(id){
+  ['staffView','formView','detailView','signView'].forEach(v=>{
+    document.getElementById(v).classList.toggle('hidden', v!==id);
+  });
+}
+function statusLabel(s){
+  return {rascunho:"Rascunho",aguardando:"Aguardando assinatura",assinado:"Assinado",concluido:"Concluído",cancelado:"Cancelado"}[s] || s;
+}
+
+/* ===================== TERMO TEXT ===================== */
+function gerarTermoTexto(d){
+  const razaoSocial = d.financeira === "PayJoy"
+    ? "PayJoy Soluções de Pagamento Ltda."
+    : "Odres Cred Sociedade de Crédito Direto S.A.";
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const taxaTexto = d.taxaCancelamento
+    ? `no valor de ${fmtMoney(d.taxaCancelamento)}, conforme condições comerciais vigentes da CREDORA`
+    : "não haverá cobrança de taxa de rescisão para o presente cancelamento";
+
+  return `<div style="text-align:center;"><b>TERMO DE CANCELAMENTO E DISTRATO DE CONTRATO DE FINANCIAMENTO</b><br>Termo nº ${d.numero || "(a atribuir na geração do link)"}${d.contrato ? " — Contrato nº "+d.contrato : ""}</div><br>
+Pelo presente instrumento particular, as partes abaixo qualificadas:<br><br>
+<b>CREDORA:</b> ${razaoSocial}, instituição responsável pelo financiamento objeto deste instrumento, doravante denominada simplesmente "CREDORA";<br><br>
+<b>INTERVENIENTE:</b> Facilita Cell / Zoom Tech, loja <b>${d.loja}</b>, estabelecimento intermediador da contratação, neste ato representada por <b>${d.atendente}</b>, doravante denominada "INTERVENIENTE";<br><br>
+<b>DEVEDOR(A):</b> <b>${d.clienteNome}</b>, portador(a) do CPF nº <b>${d.clienteCPF}</b>, telefone de contato ${d.clienteTel}, doravante denominado(a) "DEVEDOR(A)";<br><br>
+têm entre si justo e acertado o presente <b>Termo de Cancelamento e Distrato de Contrato de Financiamento</b>, que se regerá pelas cláusulas seguintes:<br><br>
+
+<b>CLÁUSULA PRIMEIRA – DO OBJETO</b><br>
+O presente termo tem por objeto o cancelamento e distrato do contrato de financiamento firmado entre as partes, referente à aquisição do aparelho <b>${d.aparelho}</b>, IMEI nº <b>${d.imei}</b>${d.contrato ? ", contrato nº "+d.contrato : ""}, celebrado em ${fmtDate(d.dataContrato)}.<br><br>
+
+<b>CLÁUSULA SEGUNDA – DO MOTIVO DO CANCELAMENTO</b><br>
+O cancelamento ora formalizado decorre do seguinte motivo: <b>${d.motivo}</b>.${d.obs ? " Observações adicionais: "+d.obs+"." : ""}<br><br>
+
+<b>CLÁUSULA TERCEIRA – DOS VALORES ENVOLVIDOS</b><br>
+Parágrafo primeiro. O valor originalmente financiado corresponde a ${fmtMoney(d.valorFinanciado)}.<br>
+Parágrafo segundo. O valor já adimplido pelo(a) DEVEDOR(A) até a presente data corresponde a ${fmtMoney(d.valorPago)}.<br>
+Parágrafo terceiro. Em razão do cancelamento e quebra do contrato, ${taxaTexto}.<br><br>
+
+<b>CLÁUSULA QUARTA – DOS EFEITOS DO CANCELAMENTO</b><br>
+A partir da assinatura eletrônica do presente instrumento, o contrato de financiamento identificado na Cláusula Primeira é considerado integralmente <b>rescindido</b>, exonerando as partes de quaisquer obrigações futuras dele decorrentes, ressalvados os valores eventualmente vencidos e não pagos até a presente data, bem como a taxa mencionada na Cláusula Terceira, os quais permanecem plenamente exigíveis nos termos do contrato original.<br><br>
+
+<b>CLÁUSULA QUINTA – DA DESTINAÇÃO DO APARELHO</b><br>
+O(A) DEVEDOR(A) autoriza, de forma expressa e irrevogável, que a CREDORA e a INTERVENIENTE adotem as medidas cabíveis em relação ao aparelho financiado, incluindo bloqueio remoto, desvinculação de linha, recolhimento ou qualquer outra providência prevista nas condições comerciais da CREDORA aplicáveis à hipótese de cancelamento.<br><br>
+
+<b>CLÁUSULA SEXTA – DA VALIDADE DA ASSINATURA ELETRÔNICA</b><br>
+As partes reconhecem, para todos os fins de direito, a plena validade e eficácia da assinatura eletrônica aposta neste termo, associada à captura de imagem facial (selfie), geolocalização do signatário e código hash SHA-256 gerado no exato momento da assinatura, nos termos da Lei Federal nº 14.063/2020 e da Medida Provisória nº 2.200-2/2001, dispensando-se qualquer outra formalidade adicional.<br><br>
+
+<b>CLÁUSULA SÉTIMA – DO FORO</b><br>
+Fica eleito o foro da Comarca de Foz do Iguaçu/PR para dirimir quaisquer controvérsias oriundas do presente instrumento, com expressa renúncia a qualquer outro, por mais privilegiado que seja.<br><br>
+
+E por estarem assim justas e contratadas, as partes firmam o presente termo, em caráter irrevogável e irretratável.<br><br>
+Foz do Iguaçu/PR, ${fmtDate(d.dataCancelamento) !== "-" ? fmtDate(d.dataCancelamento) : hoje}.<br><br>
+
+_____________________________________________<br>
+<b>DEVEDOR(A):</b> ${d.clienteNome} — CPF: ${d.clienteCPF}<br><br>
+_____________________________________________<br>
+<b>INTERVENIENTE:</b> ${d.loja} — Atendente: ${d.atendente}`;
+}
+
+/* ===================== STATE ===================== */
+let cancelamentos = [];
+let cancelamentoAtual = null;
+
+/* ===================== LOAD LIST ===================== */
+function carregarLista(){
+  db.collection(COL).orderBy("criadoEm","desc").onSnapshot(snap=>{
+    cancelamentos = [];
+    snap.forEach(doc=> cancelamentos.push({id:doc.id, ...doc.data()}));
+    renderLista();
+  }, err=>{
+    console.error(err);
+    toast("Erro ao carregar dados. Verifique a configuração do Firebase.");
+  });
+}
+
+function renderLista(){
+  const fFin = document.getElementById('filtroFinanceira').value;
+  const fSt = document.getElementById('filtroStatus').value;
+  const fBusca = document.getElementById('filtroBusca').value.toLowerCase().trim();
+
+  let filtrados = cancelamentos.filter(c=>{
+    if(fFin && c.financeira!==fFin) return false;
+    if(fSt && c.status!==fSt) return false;
+    if(fBusca){
+      const alvo = `${c.clienteNome||''} ${c.clienteCPF||''} ${c.imei||''}`.toLowerCase();
+      if(!alvo.includes(fBusca)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('contagem').textContent = filtrados.length + " registro(s)";
+  const body = document.getElementById('listaBody');
+  const empty = document.getElementById('emptyState');
+  body.innerHTML = "";
+
+  if(filtrados.length===0){ empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  filtrados.forEach(c=>{
+    const tr = document.createElement('tr');
+    const badgeClass = c.financeira==="PayJoy" ? "badge-payjoy" : "badge-odres";
+    tr.innerHTML = `
+      <td>${c.clienteNome||'-'}</td>
+      <td><span class="badge-fin ${badgeClass}">${c.financeira||'-'}</span></td>
+      <td>${c.aparelho||'-'}</td>
+      <td>${c.motivo||'-'}</td>
+      <td>${fmtDate(c.dataCancelamento)}</td>
+      <td><span class="pill pill-${c.status}">${statusLabel(c.status)}</span></td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="abrirDetalhe('${c.id}')">Ver</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+}
+
+document.getElementById('filtroFinanceira').addEventListener('change', renderLista);
+document.getElementById('filtroStatus').addEventListener('change', renderLista);
+document.getElementById('filtroBusca').addEventListener('input', renderLista);
+
+/* ===================== NEW FORM FLOW ===================== */
+document.getElementById('btnNovo').addEventListener('click', ()=>{
+  limparFormulario();
+  showView('formView');
+  irEtapa(1);
+});
+document.getElementById('btnVoltarForm').addEventListener('click', ()=> showView('staffView'));
+
+function limparFormulario(){
+  ['fFinanceira','fClienteNome','fClienteCPF','fClienteTel','fAparelho','fImei','fContrato','fValorFinanciado','fValorPago','fDataContrato','fMotivo','fTaxaCancelamento','fDataCancelamento','fObs']
+    .forEach(id=> document.getElementById(id).value = "");
+  document.getElementById('fLoja').value = "ZOOMTECH FOZ";
+  document.getElementById('fAtendente').value = "WEVELLEN";
+  cancelamentoAtual = null;
+}
+
+function irEtapa(n){
+  [1,2,3].forEach(i=>{
+    document.getElementById('etapa'+i).classList.toggle('hidden', i!==n);
+    document.querySelector(`.step[data-step="${i}"]`).classList.toggle('active', i<=n);
+  });
+}
+
+function coletarDadosForm(){
+  return {
+    financeira: document.getElementById('fFinanceira').value,
+    loja: document.getElementById('fLoja').value,
+    atendente: document.getElementById('fAtendente').value,
+    clienteNome: document.getElementById('fClienteNome').value,
+    clienteCPF: document.getElementById('fClienteCPF').value,
+    clienteTel: document.getElementById('fClienteTel').value,
+    aparelho: document.getElementById('fAparelho').value,
+    imei: document.getElementById('fImei').value,
+    contrato: document.getElementById('fContrato').value,
+    valorFinanciado: document.getElementById('fValorFinanciado').value,
+    valorPago: document.getElementById('fValorPago').value,
+    dataContrato: document.getElementById('fDataContrato').value,
+    motivo: document.getElementById('fMotivo').value,
+    taxaCancelamento: document.getElementById('fTaxaCancelamento').value,
+    dataCancelamento: document.getElementById('fDataCancelamento').value || new Date().toISOString().slice(0,10),
+    obs: document.getElementById('fObs').value
+  };
+}
+
+document.getElementById('btnIrEtapa2').addEventListener('click', ()=>{
+  const d = coletarDadosForm();
+  const obrigatorios = ['financeira','loja','atendente','clienteNome','clienteCPF','clienteTel','aparelho','imei','motivo'];
+  const faltando = obrigatorios.filter(k=> !d[k]);
+  if(faltando.length){ toast("Preencha todos os campos obrigatórios (*)."); return; }
+  cancelamentoAtual = d;
+  document.getElementById('termoPreview').innerHTML = gerarTermoTexto(d);
+  irEtapa(2);
+});
+
+document.getElementById('btnVoltarEtapa1').addEventListener('click', ()=> irEtapa(1));
+
+document.getElementById('btnBaixarTermoEtapa2').addEventListener('click', ()=>{
+  gerarPDF(cancelamentoAtual);
+});
+
+document.getElementById('btnGerarLink').addEventListener('click', async ()=>{
+  const token = uid();
+  let numero;
+  try{
+    numero = await obterProximoNumero();
+  }catch(e){
+    console.error(e);
+    toast("Erro ao gerar numeração do termo. Verifique a conexão com o Firebase.");
+    return;
+  }
+  cancelamentoAtual.numero = numero;
+  const docData = {
+    ...cancelamentoAtual,
+    status: "aguardando",
+    token: token,
+    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+    termoTexto: gerarTermoTexto(cancelamentoAtual)
+  };
+  try{
+    const ref = await db.collection(COL).add(docData);
+    cancelamentoAtual.id = ref.id;
+    cancelamentoAtual.token = token;
+    cancelamentoAtual.termoTexto = docData.termoTexto;
+    const link = `${location.origin}${location.pathname}?token=${token}`;
+    document.getElementById('linkGerado').textContent = link;
+    const qrEl = document.getElementById('qrcodeEtapa3');
+    qrEl.innerHTML = "";
+    new QRCode(qrEl, { text: link, width: 170, height: 170, colorDark: "#0F1A2B", colorLight: "#ffffff" });
+    const msg = encodeURIComponent(`Olá ${cancelamentoAtual.clienteNome}! Segue o link para assinatura digital do termo de cancelamento nº ${numero} do seu financiamento (${cancelamentoAtual.financeira}): ${link}`);
+    const tel = cancelamentoAtual.clienteTel.replace(/\D/g,'');
+    document.getElementById('btnWhatsapp').href = `https://wa.me/55${tel}?text=${msg}`;
+    document.getElementById('btnCopiarLink').onclick = ()=>{
+      navigator.clipboard.writeText(link);
+      toast("Link copiado!");
+    };
+    if(location.protocol === 'file:'){
+      toast("Atenção: arquivo aberto localmente — hospede online (ex: GitHub Pages) para o link/QR funcionarem em outro celular.");
+    }
+    irEtapa(3);
+  }catch(e){
+    console.error(e);
+    toast("Erro ao salvar cancelamento. Verifique a conexão com o Firebase.");
+  }
+});
+
+document.getElementById('btnFinalizarNovo').addEventListener('click', ()=> showView('staffView'));
+
+document.getElementById('btnBaixarTermoEtapa3').addEventListener('click', ()=>{
+  gerarPDF(cancelamentoAtual);
+});
+
+/* ===================== DETAIL VIEW ===================== */
+window.abrirDetalhe = function(id){
+  const c = cancelamentos.find(x=>x.id===id);
+  if(!c) return;
+  const badgeClass = c.financeira==="PayJoy" ? "badge-payjoy" : "badge-odres";
+  let html = `
+    <div class="grid2">
+      <div><span class="badge-fin ${badgeClass}">${c.financeira}</span> &nbsp; <span class="pill pill-${c.status}">${statusLabel(c.status)}</span></div>
+      <div class="center"><button class="btn btn-gold btn-sm" onclick="baixarPDF('${c.id}')">Baixar PDF</button></div>
+    </div>
+    <div class="termo-box" style="margin:16px 0;">${c.termoTexto || gerarTermoTexto(c)}</div>
+    <div class="grid3">
+      <div><label>Cliente</label><p>${c.clienteNome}</p></div>
+      <div><label>CPF</label><p>${c.clienteCPF}</p></div>
+      <div><label>Telefone</label><p>${c.clienteTel}</p></div>
+    </div>
+    <div class="grid3">
+      <div><label>Loja</label><p>${c.loja}</p></div>
+      <div><label>Atendente</label><p>${c.atendente}</p></div>
+      <div><label>Data cancelamento</label><p>${fmtDate(c.dataCancelamento)}</p></div>
+    </div>
+    <div class="grid3">
+      <div><label>Valor financiado</label><p>${fmtMoney(c.valorFinanciado)}</p></div>
+      <div><label>Valor já pago</label><p>${fmtMoney(c.valorPago)}</p></div>
+      <div><label>Taxa de cancelamento</label><p>${c.taxaCancelamento ? fmtMoney(c.taxaCancelamento) : "Sem cobrança"}</p></div>
+    </div>`;
+  if(c.assinaturaImg){
+    html += `<div class="grid2" style="margin-top:16px;">
+      <div><label>Assinatura</label><img src="${c.assinaturaImg}" style="background:#fff;border-radius:8px;max-width:260px;"></div>
+      <div><label>Selfie</label><img src="${c.selfieImg}" class="selfie-preview"></div>
+    </div>
+    <div style="margin-top:14px;">
+      <label>Geolocalização</label><p class="muted">${c.geo ? c.geo.lat+", "+c.geo.lng : "-"}</p>
+      <label style="margin-top:10px;">Hash de verificação (SHA-256)</label>
+      <div class="hash-box">${c.hash || "-"}</div>
+      <label style="margin-top:10px;">Assinado em</label><p class="muted">${c.assinadoEm ? new Date(c.assinadoEm).toLocaleString('pt-BR') : "-"}</p>
+    </div>`;
+  } else {
+    html += `<div class="center" style="margin-top:16px;">
+      <p class="muted" style="margin-bottom:10px;">Aguardando assinatura do cliente.</p>
+      <div class="hash-box" style="display:inline-block;margin-bottom:14px;">${location.origin}${location.pathname}?token=${c.token}</div>
+      <div class="qr-wrap" style="display:inline-flex;" id="qrWrapDetalhe">
+        <div id="qrcodeDetalhe"></div>
+        <span class="qr-caption">Escaneie para assinar</span>
+      </div>
+    </div>`;
+  }
+  document.getElementById('detailContent').innerHTML = html;
+  if(c.status === "aguardando"){
+    const link = `${location.origin}${location.pathname}?token=${c.token}`;
+    const qrEl = document.getElementById('qrcodeDetalhe');
+    if(qrEl){ new QRCode(qrEl, { text: link, width: 150, height: 150, colorDark: "#0F1A2B", colorLight: "#ffffff" }); }
+  }
+  window._detailAtual = c;
+  showView('detailView');
+};
+document.getElementById('btnVoltarDetail').addEventListener('click', ()=> showView('staffView'));
+
+window.baixarPDF = function(id){
+  const c = cancelamentos.find(x=>x.id===id);
+  gerarPDF(c);
+};
+
+/* ===================== PDF GENERATION ===================== */
+function gerarPDF(c){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const pageW = 210, pageH = 297;
+  const margin = 20;
+  const contentW = pageW - margin*2;
+  let pagina = 1;
+
+  function cabecalho(){
+    doc.setDrawColor(15,26,43); doc.setLineWidth(0.5);
+    doc.rect(margin-5, 10, contentW+10, 20);
+    doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(15,26,43);
+    doc.text("ZOOMTECH FOZ — FACILITA CELL", margin, 17);
+    doc.setFont('times','normal'); doc.setFontSize(8.5);
+    doc.text("Documento de Cancelamento de Contrato de Financiamento", margin, 23);
+    doc.setFont('times','bold'); doc.setFontSize(9.5);
+    doc.text(`Termo nº ${c.numero || "PROVISÓRIO"}`, pageW-margin, 17, {align:'right'});
+    doc.setFont('times','normal'); doc.setFontSize(8.5);
+    doc.text(`Financeira: ${c.financeira||'-'}`, pageW-margin, 23, {align:'right'});
+    doc.setDrawColor(169,130,46); doc.setLineWidth(0.7);
+    doc.line(margin-5, 33, pageW-margin+5, 33);
+    doc.setDrawColor(15,26,43); doc.setTextColor(15,26,43);
+  }
+
+  function rodape(){
+    doc.setDrawColor(210,210,210); doc.setLineWidth(0.2);
+    doc.line(margin, pageH-16, pageW-margin, pageH-16);
+    doc.setFont('times','italic'); doc.setFontSize(7); doc.setTextColor(120,120,120);
+    doc.text("Documento gerado eletronicamente pelo sistema Atlas Cancelamento — Facilita Cell / Zoom Tech.", margin, pageH-11);
+    doc.text(`Página ${pagina}`, pageW-margin, pageH-11, {align:'right'});
+    doc.setTextColor(15,26,43);
+  }
+
+  function novaPagina(){
+    rodape();
+    doc.addPage();
+    pagina++;
+    cabecalho();
+  }
+
+  cabecalho();
+  let y = 42;
+
+  doc.setFont('times','bold'); doc.setFontSize(13);
+  const tituloLines = ["TERMO DE CANCELAMENTO E DISTRATO DE", "CONTRATO DE FINANCIAMENTO"];
+  tituloLines.forEach(l=>{ doc.text(l, pageW/2, y, {align:'center'}); y += 6; });
+  y += 6;
+
+  doc.setFont('times','normal'); doc.setFontSize(10.5);
+  const termoSemTitulo = (c.termoTexto || gerarTermoTexto(c)).replace(/<div[^>]*>[\s\S]*?<\/div>\s*<br>\s*/,'');
+  const plain = termoSemTitulo.replace(/<br>/g,'\n').replace(/<\/?b>/g,'');
+  const paragrafos = plain.split('\n');
+
+  paragrafos.forEach(paragrafoRaw=>{
+    const paragrafo = paragrafoRaw.trim();
+    if(paragrafo===''){ y += 2; return; }
+    const isTitulo = /^CLÁUSULA/.test(paragrafo);
+    const isAssinaturaLinha = /^_{5,}$/.test(paragrafo);
+    doc.setFont('times', isTitulo ? 'bold' : 'normal');
+    doc.setFontSize(isTitulo ? 10.5 : 10.5);
+    const lines = doc.splitTextToSize(paragrafo, contentW);
+    lines.forEach(line=>{
+      if(y > pageH - 26){ novaPagina(); y = 42; }
+      doc.text(line, margin, y);
+      y += isAssinaturaLinha ? 6 : 5.6;
+    });
+    y += isTitulo ? 1.5 : 3;
+  });
+
+  // ===== Página de autenticação e verificação digital =====
+  novaPagina();
+  y = 46;
+  doc.setFont('times','bold'); doc.setFontSize(12.5);
+  doc.text("AUTENTICAÇÃO E VERIFICAÇÃO DIGITAL", pageW/2, y, {align:'center'}); y += 12;
+
+  doc.setDrawColor(169,130,46); doc.setLineWidth(0.4);
+  doc.roundedRect(margin, y, contentW, 96, 2, 2);
+
+  const link = c.token ? `${location.origin}${location.pathname}?token=${c.token}` : null;
+  const qrTamanhoPx = 300;
+  let qrDataUrl = null;
+  if(link){ try{ qrDataUrl = gerarQRDataURL(link, qrTamanhoPx); }catch(e){ qrDataUrl = null; } }
+
+  const boxY = y + 8;
+  if(qrDataUrl){
+    doc.addImage(qrDataUrl, 'PNG', margin+8, boxY, 42, 42);
+    doc.setFont('times','normal'); doc.setFontSize(8.5); doc.setTextColor(90,90,90);
+    doc.text("Escaneie para verificar", margin+8, boxY+48);
+    doc.text("a autenticidade deste termo", margin+8, boxY+52.5);
+    doc.setTextColor(15,26,43);
+  } else {
+    doc.setFont('times','italic'); doc.setFontSize(8); doc.setTextColor(150,150,150);
+    doc.text("QR Code disponível após", margin+8, boxY+20);
+    doc.text("a geração do link de", margin+8, boxY+25);
+    doc.text("assinatura (etapa 3).", margin+8, boxY+30);
+    doc.setTextColor(15,26,43);
+  }
+
+  let colX = margin+60, colY = boxY;
+  doc.setFont('times','bold'); doc.setFontSize(9.5);
+  doc.text("Cliente:", colX, colY); doc.setFont('times','normal');
+  doc.text(`${c.clienteNome||'-'}  |  CPF: ${c.clienteCPF||'-'}`, colX+22, colY); colY += 7;
+
+  doc.setFont('times','bold'); doc.text("Aparelho:", colX, colY); doc.setFont('times','normal');
+  doc.text(`${c.aparelho||'-'} (IMEI: ${c.imei||'-'})`, colX+22, colY); colY += 9;
+
+  if(c.hash){
+    doc.setFont('times','bold'); doc.text("Status:", colX, colY); doc.setFont('times','normal');
+    doc.text("Assinado eletronicamente", colX+22, colY); colY += 7;
+
+    doc.setFont('times','bold'); doc.text("Assinado em:", colX, colY); doc.setFont('times','normal');
+    doc.text(c.assinadoEm ? new Date(c.assinadoEm).toLocaleString('pt-BR') : '-', colX+28, colY); colY += 7;
+
+    doc.setFont('times','bold'); doc.text("Geolocalização:", colX, colY); doc.setFont('times','normal');
+    doc.text(c.geo ? `${c.geo.lat}, ${c.geo.lng}` : '-', colX+30, colY); colY += 9;
+
+    doc.setFont('times','bold'); doc.setFontSize(9);
+    doc.text("Hash de integridade (SHA-256):", colX, colY); colY += 5;
+    doc.setFont('courier','normal'); doc.setFontSize(7.5);
+    doc.splitTextToSize(c.hash||'-', contentW-70).forEach(l=>{ doc.text(l, colX, colY); colY += 4; });
+    colY += 4;
+
+    if(c.assinaturaImg){
+      doc.setFont('times','bold'); doc.setFontSize(8.5);
+      doc.text("Assinatura:", colX, colY); colY += 3;
+      try{ doc.addImage(c.assinaturaImg, 'PNG', colX, colY, 55, 24); }catch(e){}
+    }
+    if(c.selfieImg){
+      try{ doc.addImage(c.selfieImg, 'JPEG', colX+62, colY, 24, 24); }catch(e){}
+    }
+  } else {
+    doc.setFont('times','bold'); doc.text("Status:", colX, colY); doc.setFont('times','normal');
+    doc.setTextColor(169,130,46);
+    doc.text("Aguardando assinatura eletrônica do(a) DEVEDOR(A)", colX+22, colY);
+    doc.setTextColor(15,26,43); colY += 8;
+    doc.setFont('times','normal'); doc.setFontSize(8.5);
+    const instrucoes = doc.splitTextToSize(
+      "Este documento ainda não possui assinatura eletrônica válida. Para formalizar o cancelamento, o(a) cliente deve escanear o código ao lado ou acessar o link de assinatura para concluir a assinatura, selfie e confirmação de localização.",
+      contentW-70
+    );
+    doc.text(instrucoes, colX, colY);
+  }
+
+  doc.setFont('times','italic'); doc.setFontSize(7.5); doc.setTextColor(120,120,120);
+  doc.text(
+    "Assinatura eletrônica válida nos termos da Lei Federal nº 14.063/2020 e da MP nº 2.200-2/2001.",
+    pageW/2, y+90, {align:'center'}
+  );
+  doc.setTextColor(15,26,43);
+
+  rodape();
+  doc.save(`Termo_Cancelamento_${c.numero ? c.numero.replace('/','-')+'_' : ''}${c.financeira}_${(c.clienteNome||'cliente').replace(/\s+/g,'_')}.pdf`);
+}
+
+/* ===================== CLIENT SIGNING FLOW ===================== */
+let sigCtx, sigDrawing=false, sigHasStroke=false;
+let selfieStream=null, selfieDataUrl=null;
+
+async function iniciarAssinaturaPorToken(token){
+  showView('signView');
+  const snap = await db.collection(COL).where("token","==",token).limit(1).get();
+  if(snap.empty){
+    document.getElementById('signLoading').classList.add('hidden');
+    document.getElementById('signError').classList.remove('hidden');
+    return;
+  }
+  const docRef = snap.docs[0];
+  const data = docRef.data();
+  if(data.status === "assinado" || data.status === "concluido"){
+    document.getElementById('signLoading').classList.add('hidden');
+    document.getElementById('signContent').classList.remove('hidden');
+    document.getElementById('signStepSig').classList.add('hidden');
+    document.getElementById('signStepDone').classList.remove('hidden');
+    document.getElementById('signHashDisplay').textContent = "Hash: " + (data.hash||'-');
+    return;
+  }
+  window._signDocId = docRef.id;
+  window._signData = data;
+  document.getElementById('signTermoBox').innerHTML = data.termoTexto || gerarTermoTexto(data);
+  document.getElementById('signLoading').classList.add('hidden');
+  document.getElementById('signContent').classList.remove('hidden');
+  initSigCanvas();
+}
+
+function initSigCanvas(){
+  const canvas = document.getElementById('sigCanvas');
+  canvas.width = canvas.offsetWidth;
+  sigCtx = canvas.getContext('2d');
+  sigCtx.strokeStyle = "#0B1E35";
+  sigCtx.lineWidth = 2.4;
+  sigCtx.lineCap = "round";
+
+  function pos(e){
+    const r = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: p.clientX-r.left, y: p.clientY-r.top };
+  }
+  function start(e){ sigDrawing=true; sigHasStroke=true; const p=pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); e.preventDefault(); }
+  function move(e){ if(!sigDrawing) return; const p=pos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); e.preventDefault(); }
+  function end(){ sigDrawing=false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+}
+
+document.getElementById('btnLimparAssinatura').addEventListener('click', ()=>{
+  const canvas = document.getElementById('sigCanvas');
+  sigCtx.clearRect(0,0,canvas.width,canvas.height);
+  sigHasStroke = false;
+});
+
+document.getElementById('btnConfirmarAssinatura').addEventListener('click', ()=>{
+  if(!sigHasStroke){ toast("Assine no campo antes de continuar."); return; }
+  document.getElementById('signStepSig').classList.add('hidden');
+  document.getElementById('signStepSelfie').classList.remove('hidden');
+});
+
+document.getElementById('btnAbrirCamera').addEventListener('click', async ()=>{
+  try{
+    selfieStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:"user" } });
+    document.getElementById('selfieVideo').srcObject = selfieStream;
+  }catch(e){
+    toast("Não foi possível acessar a câmera. Permita o acesso e tente novamente.");
+  }
+});
+
+document.getElementById('btnTirarSelfie').addEventListener('click', ()=>{
+  const video = document.getElementById('selfieVideo');
+  if(!video.srcObject){ toast("Ative a câmera primeiro."); return; }
+  const canvas = document.getElementById('selfieCanvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video,0,0);
+  selfieDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  document.getElementById('selfiePreviewImg').src = selfieDataUrl;
+  document.getElementById('selfiePreviewWrap').classList.remove('hidden');
+  if(selfieStream){ selfieStream.getTracks().forEach(t=>t.stop()); }
+  video.classList.add('hidden');
+});
+
+document.getElementById('btnFinalizarAssinatura').addEventListener('click', async ()=>{
+  if(!selfieDataUrl){ toast("Tire a selfie antes de concluir."); return; }
+  const canvas = document.getElementById('sigCanvas');
+  const assinaturaImg = canvas.toDataURL('image/png');
+
+  let geo = null;
+  try{
+    geo = await new Promise((resolve)=>{
+      if(!navigator.geolocation){ resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        pos=> resolve({lat:pos.coords.latitude.toFixed(6), lng:pos.coords.longitude.toFixed(6)}),
+        ()=> resolve(null),
+        {timeout:6000}
+      );
+    });
+  }catch(e){ geo = null; }
+
+  const assinadoEm = Date.now();
+  const conteudoParaHash = JSON.stringify({
+    id: window._signDocId, assinaturaImg, selfieDataUrl, geo, assinadoEm,
+    clienteCPF: window._signData.clienteCPF
+  });
+  const hash = await sha256(conteudoParaHash);
+
+  try{
+    await db.collection(COL).doc(window._signDocId).update({
+      status: "assinado",
+      assinaturaImg,
+      selfieImg: selfieDataUrl,
+      geo,
+      assinadoEm,
+      hash
+    });
+    document.getElementById('signStepSelfie').classList.add('hidden');
+    document.getElementById('signStepDone').classList.remove('hidden');
+    document.getElementById('signHashDisplay').textContent = "Hash: " + hash;
+  }catch(e){
+    console.error(e);
+    toast("Erro ao salvar assinatura. Tente novamente.");
+  }
+});
+
+/* ===================== ROUTING (staff vs client signing) ===================== */
+(function init(){
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  if(token){
+    iniciarAssinaturaPorToken(token);
+  }else{
+    showView('staffView');
+    carregarLista();
+  }
+})();
+</script>
+</body>
+</html>
